@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fake News Detector</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <p class="overline">AI &amp; ML · PBL Project</p>
+    <h1>Fake News <em>Detector</em></h1>
+    <p class="tagline">Submit a headline or article for automated credibility analysis.</p>
+  </header>
+
+  <main class="card">
+    <div class="card-header">
+      <div class="dot"></div>
+      <span class="card-title">Analysis Terminal</span>
+    </div>
+
+    <div class="card-body">
+      <label class="field-label" for="newsText">Input — News Headline or Article</label>
+      <textarea
+        id="newsText"
+        placeholder="Paste or type a news headline or full article here..."
+        spellcheck="false"
+      ></textarea>
+      <button class="btn-analyze" id="btn" onclick="analyze()">
+        Run Analysis
+      </button>
+
+      <div id="result">
+        <div class="divider"></div>
+
+        <div id="verdictSection" class="verdict-section result-animate">
+          <p class="verdict-overline">Classification Verdict</p>
+          <div class="verdict-text" id="verdictText"></div>
+          <p class="verdict-sub" id="verdictSub"></p>
+        </div>
+
+        <div class="score-grid result-animate">
+          <div class="score-cell">
+            <div class="sc-label">Fake Probability</div>
+            <div class="sc-value" id="fakePct">—</div>
+          </div>
+          <div class="score-cell">
+            <div class="sc-label">Real Probability</div>
+            <div class="sc-value" id="realPct">—</div>
+          </div>
+          <div class="score-cell">
+            <div class="sc-label">Confidence</div>
+            <div class="sc-value" id="conf">—</div>
+          </div>
+        </div>
+
+        <div class="result-animate">
+          <p class="model-section-title">Model Breakdown</p>
+          <div class="model-row">
+            <span class="model-name">Naive Bayes</span>
+            <span class="model-verdict" id="nbResult">—</span>
+          </div>
+          <div class="model-row">
+            <span class="model-name">Logistic Regression</span>
+            <span class="model-verdict" id="lrResult">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    Sudiksha Srivastav&nbsp;·&nbsp; Aastha Singh &nbsp;·&nbsp;Pragati Gupta &nbsp;·&nbsp;Navya Luthra
+  </footer>
+
+  <script>
+    async function analyze() {
+      const text = document.getElementById('newsText').value.trim();
+      if (!text) {
+        alert('Please enter a news headline or article before submitting.');
+        return;
+      }
+
+      const btn    = document.getElementById('btn');
+      const result = document.getElementById('result');
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+      result.style.display = 'none';
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!res.ok) throw new Error('Server error');
+        const data = await res.json();
+        const r    = data.result;
+
+        const isReal  = r.verdict === 'REAL';
+        const section = document.getElementById('verdictSection');
+        section.className = 'verdict-section result-animate ' + (isReal ? 'real' : 'fake');
+
+        document.getElementById('verdictText').textContent = r.verdict;
+        document.getElementById('verdictSub').textContent  = isReal
+          ? 'This content appears to be credible and factual.'
+          : 'This content contains characteristics of misinformation.';
+
+        document.getElementById('fakePct').textContent = r.prob_fake + '%';
+        document.getElementById('realPct').textContent = r.prob_real + '%';
+        document.getElementById('conf').textContent    = r.confidence + '%';
+
+        const nb = r.naive_bayes;
+        const lr = r.logistic_regression;
+
+        const nbEl = document.getElementById('nbResult');
+        nbEl.textContent = nb.label + ' — ' + nb.confidence + '%';
+        nbEl.className   = 'model-verdict ' + nb.label.toLowerCase();
+
+        const lrEl = document.getElementById('lrResult');
+        lrEl.textContent = lr.label + ' — ' + lr.confidence + '%';
+        lrEl.className   = 'model-verdict ' + lr.label.toLowerCase();
+
+        result.style.display = 'block';
+
+      } catch (e) {
+        alert('Unable to connect to the analysis server. Please ensure the backend is running on port 8001.');
+      }
+
+      btn.disabled    = false;
+      btn.textContent = 'Run Analysis';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('newsText').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.ctrlKey) analyze();
+      });
+    });
+  </script>
+
+</body>
+</html>
