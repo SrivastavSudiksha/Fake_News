@@ -132,7 +132,6 @@ app.add_middleware(
 
 model = FakeNewsModel()
 
-# Serve static files (HTML/CSS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
